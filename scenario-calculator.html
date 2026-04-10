@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scenario Calculator</title>
+  <meta name="description" content="Interactive revenue scenario calculator — adjust customer base, activation rate, avg ticket, trades and mark-up to model revenue potential across adoption scenarios.">
+  <meta property="og:title" content="Scenario Calculator">
+  <meta property="og:description" content="Interactive revenue scenario calculator — adjust customer base, activation rate, avg ticket, trades and mark-up to model revenue potential across adoption scenarios.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Scenario Calculator">
+  <meta name="twitter:description" content="Interactive revenue scenario calculator — adjust customer base, activation rate, avg ticket, trades and mark-up to model revenue potential across adoption scenarios.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #06060a;
+      --bg-spot-a:    rgba(0, 210, 170, 0.04);
+      --bg-spot-b:    rgba(245, 180, 50, 0.03);
+      --surface:      #0d0d14;
+      --border:       #1c1c28;
+      --border-soft:  #14141e;
+      --text:         #eaeaf2;
+      --text-dim:     #9898b0;
+      --muted:        #48485e;
+      --accent:       #00d9a8;
+      --accent-dim:   rgba(0, 217, 168, 0.10);
+      --accent-glow:  rgba(0, 217, 168, 0.28);
+      --warm:         #f5c542;
+      --warm-dim:     rgba(245, 197, 66, 0.10);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 60px 24px 80px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -200px; left: -200px;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, var(--bg-spot-a), transparent 70%);
+      pointer-events: none;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      bottom: -200px; right: -200px;
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, var(--bg-spot-b), transparent 70%);
+      pointer-events: none;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 920px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Header ─────────────────────────────────── */
+    .header {
+      margin-bottom: 44px;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .header-eyebrow {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-eyebrow::after {
+      content: '';
+      display: block;
+      width: 32px; height: 1px;
+      background: var(--accent);
+      opacity: 0.5;
+    }
+
+    .header-title {
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      line-height: 1.05;
+      margin-bottom: 10px;
+    }
+
+    .header-sub {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ── Presets ─────────────────────────────────── */
+    .presets {
+      display: flex;
+      gap: 8px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+
+    .preset-btn {
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 9px 18px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: border-color 0.18s, color 0.18s, background 0.18s;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .preset-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .preset-badge {
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-left: 6px;
+      font-weight: 400;
+    }
+
+    /* ── Panel ───────────────────────────────────── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 28px 32px 24px;
+      margin-bottom: 20px;
+      animation: fadeUp 0.5s 0.1s ease both;
+    }
+
+    .panel-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    /* ── Slider rows ─────────────────────────────── */
+    .slider-row {
+      display: grid;
+      grid-template-columns: 200px 28px 1fr 28px 120px;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .slider-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .slider-row:first-of-type { padding-top: 0; }
+
+    .slider-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    /* ── Step buttons ────────────────────────────── */
+    .step-btn {
+      width: 26px;
+      height: 26px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      border-radius: 3px;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-family: 'IBM Plex Mono', monospace;
+      transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.08s;
+      padding: 0;
+      user-select: none;
+    }
+
+    .step-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .step-btn:active {
+      transform: scale(0.9);
+    }
+
+    /* ── Range input ─────────────────────────────── */
+    .slider-track {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 2px;
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+      background: linear-gradient(to right, var(--accent) 0%, var(--border) 0%);
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: 2px solid var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 0 3px var(--accent-dim), 0 0 14px var(--accent-glow);
+      transition: box-shadow 0.2s, transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      box-shadow: 0 0 0 5px var(--accent-dim), 0 0 22px var(--accent-glow);
+      transform: scale(1.1);
+    }
+
+    input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.15); }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: 2px solid var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 0 3px var(--accent-dim), 0 0 14px var(--accent-glow);
+    }
+
+    input[type="range"]::-moz-range-track {
+      height: 2px;
+      border-radius: 2px;
+      background: transparent;
+    }
+
+    /* ── Slider value label ───────────────────────── */
+    .slider-value {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--warm);
+      text-align: right;
+      letter-spacing: 0.01em;
+    }
+
+    .slider-value.flash { animation: valueFlash 0.25s ease; }
+
+    /* ── Funnel connector ────────────────────────── */
+    .funnel-connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 18px 0;
+      animation: fadeUp 0.5s 0.2s ease both;
+      flex-wrap: wrap;
+      gap: 2px;
+    }
+
+    .funnel-step {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+      padding: 0 4px;
+    }
+
+    .funnel-arrow {
+      color: var(--border);
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    /* ── KPI grid ────────────────────────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      animation: fadeUp 0.5s 0.25s ease both;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 22px 20px 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1.5px;
+      background: var(--accent);
+      opacity: 0.35;
+      transition: opacity 0.2s;
+    }
+
+    .kpi-card:hover::after { opacity: 0.7; }
+
+    .kpi-card.primary::after {
+      background: var(--warm);
+      opacity: 0.8;
+    }
+
+    .kpi-card.primary {
+      border-color: rgba(245, 197, 66, 0.15);
+      background: linear-gradient(135deg, var(--surface) 0%, rgba(245, 197, 66, 0.03) 100%);
+    }
+
+    .kpi-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .kpi-value {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .kpi-card.primary .kpi-value { color: var(--warm); }
+
+    .kpi-value.updating { animation: numPulse 0.3s ease; }
+
+    .kpi-formula {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.6;
+      border-top: 1px solid var(--border-soft);
+      padding-top: 10px;
+    }
+
+    /* ── Footer ──────────────────────────────────── */
+    .footer {
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      animation: fadeUp 0.5s 0.3s ease both;
+    }
+
+    .footer-note {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Animations ──────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes valueFlash {
+      0%   { opacity: 0.4; }
+      50%  { opacity: 1; color: #fff; }
+      100% { opacity: 1; }
+    }
+
+    @keyframes numPulse {
+      0%   { opacity: 0.5; transform: scale(0.97); }
+      60%  { transform: scale(1.01); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* ── Responsive ──────────────────────────────── */
+    @media (max-width: 760px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .slider-row { grid-template-columns: 140px 26px 1fr 26px 90px; gap: 8px; }
+      .panel { padding: 20px 16px; }
+    }
+
+    @media (max-width: 500px) {
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+      .slider-row { grid-template-columns: 110px 26px 1fr 26px 80px; gap: 6px; }
+      .slider-label { font-size: 11px; }
+      .funnel-connector { display: none; }
+      .footer { flex-direction: column; gap: 8px; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-eyebrow">Revenue Model</div>
+      <h1 class="header-title">Scenario Calculator</h1>
+      <p class="header-sub">Adjust input parameters to model revenue potential across adoption scenarios</p>
+      <div class="presets">
+        <button class="preset-btn" id="preset-conservative" onclick="applyPreset('conservative')">
+          Conservative <span class="preset-badge">−20%</span>
+        </button>
+        <button class="preset-btn active" id="preset-base" onclick="applyPreset('base')">
+          Base Case <span class="preset-badge">default</span>
+        </button>
+        <button class="preset-btn" id="preset-bull" onclick="applyPreset('bull')">
+          Bull Case <span class="preset-badge">+20%</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Sliders Panel -->
+    <div class="panel">
+      <div class="panel-title">Input Parameters</div>
+
+      <!-- Customer base: 1M–100M, step 1M, default 50M -->
+      <div class="slider-row">
+        <span class="slider-label">Customer base</span>
+        <button class="step-btn" onclick="stepSlider('s-customers',-1)">−</button>
+        <div class="slider-track">
+          <input type="range" id="s-customers" min="1000000" max="100000000" step="1000000" value="25000000">
+        </div>
+        <button class="step-btn" onclick="stepSlider('s-customers',1)">+</button>
+        <span class="slider-value" id="v-customers">50M</span>
+      </div>
+
+      <!-- Activation rate: 0–15%, step 0.2%, default 1% -->
+      <div class="slider-row">
+        <span class="slider-label">Activation rate</span>
+        <button class="step-btn" onclick="stepSlider('s-activation',-1)">−</button>
+        <div class="slider-track">
+          <input type="range" id="s-activation" min="0" max="15" step="0.1" value="1">
+        </div>
+        <button class="step-btn" onclick="stepSlider('s-activation',1)">+</button>
+        <span class="slider-value" id="v-activation">1%</span>
+      </div>
+
+      <!-- Avg ticket: €100–€10,000, step €50, default €1,000 -->
+      <div class="slider-row">
+        <span class="slider-label">Avg ticket (€)</span>
+        <button class="step-btn" onclick="stepSlider('s-ticket',-1)">−</button>
+        <div class="slider-track">
+          <input type="range" id="s-ticket" min="100" max="10000" step="50" value="1000">
+        </div>
+        <button class="step-btn" onclick="stepSlider('s-ticket',1)">+</button>
+        <span class="slider-value" id="v-ticket">€1,000</span>
+      </div>
+
+      <!-- Trades / user / month: 0–10, step 0.5, default 1 -->
+      <div class="slider-row">
+        <span class="slider-label">Trades / user / month</span>
+        <button class="step-btn" onclick="stepSlider('s-trades',-1)">−</button>
+        <div class="slider-track">
+          <input type="range" id="s-trades" min="0" max="10" step="0.2" value="1">
+        </div>
+        <button class="step-btn" onclick="stepSlider('s-trades',1)">+</button>
+        <span class="slider-value" id="v-trades">1</span>
+      </div>
+
+      <!-- Mark-up: 0–50 bps, step 1 bps, default 5 bps -->
+      <div class="slider-row">
+        <span class="slider-label">Mark-up (bps)</span>
+        <button class="step-btn" onclick="stepSlider('s-markup',-1)">−</button>
+        <div class="slider-track">
+          <input type="range" id="s-markup" min="0" max="50" step="1" value="5">
+        </div>
+        <button class="step-btn" onclick="stepSlider('s-markup',1)">+</button>
+        <span class="slider-value" id="v-markup">5 bps</span>
+      </div>
+    </div>
+
+    <!-- Funnel formula bar -->
+    <div class="funnel-connector">
+      <span class="funnel-step">base</span>
+      <span class="funnel-arrow"> ×</span>
+      <span class="funnel-step">activation</span>
+      <span class="funnel-arrow"> →</span>
+      <span class="funnel-step">active users</span>
+      <span class="funnel-arrow"> ×</span>
+      <span class="funnel-step">ticket × trades</span>
+      <span class="funnel-arrow"> →</span>
+      <span class="funnel-step">notional</span>
+      <span class="funnel-arrow"> ×</span>
+      <span class="funnel-step">mark-up</span>
+      <span class="funnel-arrow"> →</span>
+      <span class="funnel-step">revenue</span>
+    </div>
+
+    <!-- KPI output -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Active Users</div>
+        <div class="kpi-value" id="kpi-users">500K</div>
+        <div class="kpi-formula">base<br>× activation rate</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Monthly Notional</div>
+        <div class="kpi-value" id="kpi-notional">€500M</div>
+        <div class="kpi-formula">users × avg ticket<br>× trades / month</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Monthly Revenue</div>
+        <div class="kpi-value" id="kpi-monthly">€250K</div>
+        <div class="kpi-formula">monthly notional<br>× mark-up (bps)</div>
+      </div>
+      <div class="kpi-card primary">
+        <div class="kpi-label">Annual Revenue</div>
+        <div class="kpi-value" id="kpi-annual">€3M</div>
+        <div class="kpi-formula">monthly revenue<br>× 12 months</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <span class="footer-note">All figures indicative</span>
+      <span class="footer-note" id="footer-date"></span>
+    </div>
+
+  </div>
+
+  <script>
+    // ── Scenarios ──────────────────────────────────
+    // Base: 50M / 1% / €1,000 / 1 trade / 5 bps
+    // Conservative: −20% on each variable
+    // Bull: +20% on each variable
+    const SCENARIOS = {
+      conservative: { customers: 20000000, activation: 0.8, ticket: 800,  trades: 0.5, markup: 4 },
+      base:         { customers: 25000000, activation: 1.0, ticket: 1000, trades: 1.0, markup: 5 },
+      bull:         { customers: 30000000, activation: 1.2, ticket: 1200, trades: 1.5, markup: 6 },
+    };
+
+    // ── Number formatting ──────────────────────────
+    function fmtNum(n) {
+      if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+      if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+      return Math.round(n).toLocaleString();
+    }
+
+    function fmtEur(n) { return '€' + fmtNum(n); }
+
+    function fmtCustomers(n) {
+      if (n >= 1e6) return Math.round(n / 1e6) + 'M';
+      return Math.round(n / 1e3) + 'K';
+    }
+
+    // ── Slider track fill ──────────────────────────
+    function fillTrack(el) {
+      const pct = ((+el.value - +el.min) / (+el.max - +el.min)) * 100;
+      el.style.background =
+        `linear-gradient(to right, var(--accent) ${pct}%, var(--border) ${pct}%)`;
+    }
+
+    // ── KPI flash animation ────────────────────────
+    function flashEl(el) {
+      el.classList.remove('flash', 'updating');
+      void el.offsetWidth;
+      el.classList.add('flash', 'updating');
+    }
+
+    // ── Step button handler ────────────────────────
+    function stepSlider(id, dir) {
+      const s = document.getElementById(id);
+      const newVal = Math.min(+s.max, Math.max(+s.min, +s.value + dir * +s.step));
+      s.value = newVal;
+      fillTrack(s);
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      calculate();
+    }
+
+    // ── Core calculation ───────────────────────────
+    function calculate() {
+      const customers  = +document.getElementById('s-customers').value;
+      const actPct     = +document.getElementById('s-activation').value;
+      const activation = actPct / 100;
+      const ticket     = +document.getElementById('s-ticket').value;
+      const trades     = +document.getElementById('s-trades').value;
+      const markupBps  = +document.getElementById('s-markup').value;
+      const markup     = markupBps / 10000;   // bps → decimal factor
+
+      // Update slider value labels
+      document.getElementById('v-customers').textContent = fmtCustomers(customers);
+      document.getElementById('v-activation').textContent =
+        (actPct % 1 === 0 ? actPct.toFixed(0) : actPct.toFixed(1)) + '%';
+      document.getElementById('v-ticket').textContent = '€' + ticket.toLocaleString();
+      document.getElementById('v-trades').textContent =
+        trades % 1 === 0 ? String(trades) : trades.toFixed(1);
+      document.getElementById('v-markup').textContent = markupBps.toFixed(0) + ' bps';
+
+      // Calculate outputs
+      const activeUsers     = customers * activation;
+      const monthlyNotional = activeUsers * ticket * trades;
+      const monthlyRevenue  = monthlyNotional * markup;
+      const annualRevenue   = monthlyRevenue * 12;
+
+      // Update KPIs
+      [
+        ['kpi-users',    fmtNum(activeUsers)],
+        ['kpi-notional', fmtEur(monthlyNotional)],
+        ['kpi-monthly',  fmtEur(monthlyRevenue)],
+        ['kpi-annual',   fmtEur(annualRevenue)],
+      ].forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (el.textContent !== val) { el.textContent = val; flashEl(el); }
+      });
+    }
+
+    // ── Apply scenario preset ──────────────────────
+    function applyPreset(name) {
+      const s = SCENARIOS[name];
+      document.getElementById('s-customers').value  = s.customers;
+      document.getElementById('s-activation').value = s.activation;
+      document.getElementById('s-ticket').value     = s.ticket;
+      document.getElementById('s-trades').value     = s.trades;
+      document.getElementById('s-markup').value     = s.markup;
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('preset-' + name).classList.add('active');
+      document.querySelectorAll('input[type="range"]').forEach(fillTrack);
+      calculate();
+    }
+
+    // ── Wire up slider inputs ──────────────────────
+    document.querySelectorAll('input[type="range"]').forEach(slider => {
+      fillTrack(slider);
+      slider.addEventListener('input', () => {
+        fillTrack(slider);
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        calculate();
+      });
+    });
+
+    // ── Footer date ────────────────────────────────
+    document.getElementById('footer-date').textContent =
+      new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+    // ── Init ───────────────────────────────────────
+    calculate();
+  </script>
+</body>
+</html>
